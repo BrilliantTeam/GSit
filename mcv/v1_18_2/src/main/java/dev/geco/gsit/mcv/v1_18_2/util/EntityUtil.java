@@ -59,8 +59,10 @@ public class EntityUtil implements dev.geco.gsit.util.EntityUtil {
         SeatEntity seatEntity = new SeatEntity(location);
 
         boolean riding = rider.startRiding(seatEntity, true);
-        if(!riding) return null;
-        if(!spawnEntity(seatEntity)) return null;
+        if(!riding || !spawnEntity(seatEntity)) {
+            seatEntity.discard();
+            return null;
+        }
 
         if(canRotate) seatEntity.startRotate();
 
@@ -84,27 +86,32 @@ public class EntityUtil implements dev.geco.gsit.util.EntityUtil {
 
         for(int entityCount = 1; entityCount <= maxEntities; entityCount++) {
             PlayerSitEntity playerSitEntity = new PlayerSitEntity(target.getLocation());
+            playerSitEntities.add(playerSitEntity);
             boolean riding = playerSitEntity.startRiding(topEntity, true);
             if(!riding) {
-                playerSitEntities.forEach(PlayerSitEntity::discard);
+                discardPlayerSitEntities(playerSitEntities);
                 return null;
             }
             if(entityCount == maxEntities) {
                 riding = ((CraftEntity) player).getHandle().startRiding(playerSitEntity, true);
                 if(!riding) {
-                    playerSitEntities.forEach(PlayerSitEntity::discard);
+                    discardPlayerSitEntities(playerSitEntities);
                     return null;
                 }
             }
-            playerSitEntities.add(playerSitEntity);
             if(!spawnEntity(playerSitEntity)) {
-                playerSitEntities.forEach(PlayerSitEntity::discard);
+                discardPlayerSitEntities(playerSitEntities);
                 return null;
             }
             topEntity = playerSitEntity;
         }
 
         return playerSitEntities.stream().map(PlayerSitEntity::getUUID).toList();
+    }
+
+    private void discardPlayerSitEntities(List<PlayerSitEntity> entities) {
+        entities.forEach(entity -> entity.stopRiding(true));
+        entities.forEach(PlayerSitEntity::discard);
     }
 
     private boolean spawnEntity(net.minecraft.world.entity.Entity entity) { return entity.level.getWorld().getHandle().entityManager.addNewEntity(entity); }
